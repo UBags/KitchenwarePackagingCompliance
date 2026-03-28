@@ -326,7 +326,7 @@ classDiagram
 
     OCRDimensionsWrapper <|-- OCRPriceDimensionsWrapper
     OCRDimensionsWrapper <|-- OCRProductDimensionsWrapper
-    OCRDimensionsWrapper <|-- OCRDateDimensionsWrapper
+    OCORDimensionsWrapper <|-- OCRDateDimensionsWrapper
     PoolHandle <|.. TechWerxTesseractHandle
     TechWerxTesseractHandlePool --|> GenericObjectPool
     TechWerxTesseractHandleFactory --|> BasePooledObjectFactory
