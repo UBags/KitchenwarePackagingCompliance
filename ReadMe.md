@@ -19,7 +19,7 @@ The system watches an input folder for incoming label images, processes each ima
 - [Tesseract Pool Lifecycle](#tesseract-pool-lifecycle)
 - [Validation Flow](#validation-flow)
 - [Threading Model](#threading-model)
-- [State Machine — Per-Image Processing](#state-machine--per-image-processing)
+- [Per-Image State Machine](#per-image-state-machine)
 - [File Watcher Loop](#file-watcher-loop)
 - [Initialisation Sequence](#initialisation-sequence)
 - [External Dependencies](#external-dependencies)
@@ -30,23 +30,22 @@ The system watches an input folder for incoming label images, processes each ima
 
 ```mermaid
 graph TD
-    A[Input Folder\nWatchService] -->|new image file| B[ReadLabelsMultiThreaded\nJavaFX Application]
-    B --> C[Image Pre-processing\ngetBaseImages]
-    C --> D[Parallel Try-Threads\ngetDerivativeImages\nAndBoundingBoxes]
-    D --> E[OCR Sub-image Extraction\ngetOCRBufferedImageWrapperArrayFast]
-    E --> F[TechWerxTesseractHandlePool\nOCR Engine Pool]
-    F --> G[OCRResult\nsentences + confidences]
-    G --> H[ProductPriceData\nvalidate]
-    H --> I{Match found?}
-    I -->|Yes - ALL_OK| J[ProductDescription\nproduct + price + date]
-    I -->|No| K[ProductDescription\nwith rejection reason]
-    J --> L[Resources\nWrite results files]
+    A["Input Folder\nWatchService"] -->|"new image file"| B["ReadLabelsMultiThreaded\nJavaFX Application"]
+    B --> C["Image Pre-processing\ngetBaseImages"]
+    C --> D["Parallel Try-Threads\ngetDerivativeImagesAndBoundingBoxes"]
+    D --> E["OCR Sub-image Extraction\ngetOCRBufferedImageWrapperArrayFast"]
+    E --> F["TechWerxTesseractHandlePool\nOCR Engine Pool"]
+    F --> G["OCRResult\nsentences and confidences"]
+    G --> H["ProductPriceData\nvalidate"]
+    H --> I{"Match found?"}
+    I -->|"Yes - ALL_OK"| J["ProductDescription\nproduct + price + date"]
+    I -->|"No"| K["ProductDescription\nwith rejection reason"]
+    J --> L["Resources\nWrite results files"]
     K --> L
-    L --> M[JavaFX UI\nLive results panel]
-
-    N[Price Master CSV] -->|loadProductsAndPrices| H
-    O[config.properties] -->|InitialiseParameters| B
-    P[product.properties] -->|CheckProductProperties| B
+    L --> M["JavaFX UI\nLive results panel"]
+    N["Price Master CSV"] -->|"loadProductsAndPrices"| H
+    O["config.properties"] -->|"InitialiseParameters"| B
+    P["product.properties"] -->|"CheckProductProperties"| B
 ```
 
 ---
@@ -55,73 +54,57 @@ graph TD
 
 ```mermaid
 graph LR
-    ROOT[com.techwerx]
+    ROOT["com.techwerx"]
+    ROOT --> IMG["image"]
+    ROOT --> TEXT["text"]
+    ROOT --> TESS["tesseract"]
+    ROOT --> LABEL["labelprocessing"]
 
-    ROOT --> IMG[image]
-    ROOT --> TEXT[text]
-    ROOT --> TESS[tesseract]
-    ROOT --> LABEL[labelprocessing]
-    ROOT --> PDF[pdf]
+    IMG --> IMG_UTIL["image.utils"]
+    IMG --> IMG_STREAM["image.streams"]
+    IMG --> IMG_THRESH["image.thresholds"]
 
-    IMG --> IMG_UTIL[utils]
-    IMG --> IMG_STREAM[streams]
-    IMG --> IMG_THRESH[thresholds]
+    IMG_UTIL --> U1["SBImageUtils"]
+    IMG_UTIL --> U2["PixDebugWriter"]
+    IMG_UTIL --> U3["SysOutController"]
+    IMG_UTIL --> U4["ImageNumbers"]
+    IMG_UTIL --> U5["ExclusionList"]
+    IMG_UTIL --> U6["NumberTriplet"]
 
-    IMG_UTIL --> SBImageUtils
-    IMG_UTIL --> SBImageArrayUtils
-    IMG_UTIL --> PixDebugWriter
-    IMG_UTIL --> SysOutController
-    IMG_UTIL --> ImageNumbers
-    IMG_UTIL --> ExclusionList
-    IMG_UTIL --> NumberTriplet
+    IMG_STREAM --> S1["FastByteArrayInputStream"]
+    IMG_STREAM --> S2["FastByteArrayOutputStream"]
+    IMG_THRESH --> T1["OtsuThreshold"]
 
-    IMG_STREAM --> FastByteArrayInputStream
-    IMG_STREAM --> FastByteArrayOutputStream
-    IMG_STREAM --> FastByteArrayInputStreamData
+    IMG --> I1["SBImage"]
+    IMG --> I2["BBox / Pair / DimensionScaling"]
+    IMG --> I3["PixAutoCloseable"]
+    IMG --> I4["PixCleaningUtils"]
 
-    IMG_THRESH --> OtsuThreshold
+    TEXT --> TX1["OCRResult"]
+    TEXT --> TX2["OCRBufferedImageWrapper"]
+    TEXT --> TX3["OCRStringWrapper"]
+    TEXT --> TX4["Resources"]
+    TEXT --> TX5["KDEData / ProcessDataWrapper"]
 
-    IMG --> SBImage
-    IMG --> BBox
-    IMG --> Pair
-    IMG --> DimensionScaling
-    IMG --> XYDivisions
-    IMG --> SBSubImageCoordinates
-    IMG --> DeSkewSBImage
-    IMG --> PixAutoCloseable
-    IMG --> PixCleaningUtils
+    TESS --> TE1["TechWerxTesseract"]
+    TESS --> TE2["TechWerxTesseractHandle"]
+    TESS --> TE3["TechWerxTesseractHandlePool"]
+    TESS --> TE4["TechWerxTesseractHandleFactory"]
+    TESS --> TE5["PoolHandle interface"]
 
-    TEXT --> OCRResult
-    TEXT --> OCRBufferedImageWrapper
-    TEXT --> OCRStringWrapper_t[OCRStringWrapper]
-    TEXT --> BIWrapperForOCR
-    TEXT --> KDEData
-    TEXT --> ProcessDataWrapper
-    TEXT --> Resources
+    LABEL --> L1["OCRDimensionsWrapper abstract"]
+    LABEL --> L2["OCRPriceDimensionsWrapper"]
+    LABEL --> L3["OCRDateDimensionsWrapper"]
+    LABEL --> L4["OCRProductDimensionsWrapper"]
+    LABEL --> L5["ProductDescription"]
+    LABEL --> L6["ProcessingData"]
 
-    TESS --> TechWerxTesseract
-    TESS --> TechWerxTesseractHandle
-    TESS --> TechWerxTesseractHandleFactory
-    TESS --> TechWerxTesseractHandlePool
-    TESS --> PoolHandle
-
-    LABEL --> OCRDimensionsWrapper
-    LABEL --> OCRPriceDimensionsWrapper
-    LABEL --> OCRProductDimensionsWrapper
-    LABEL --> OCRDateDimensionsWrapper
-    LABEL --> OCRStringWrapper_l[OCRStringWrapper]
-    LABEL --> ProductDescription
-    LABEL --> ProcessingData
-
-    LABEL --> PRESTIGE[prestige]
-    PRESTIGE --> ReadLabelsMultiThreaded
-    PRESTIGE --> ProductPriceData
-    PRESTIGE --> CheckProductProperties
-
-    PRESTIGE --> INIT[initialise]
-    INIT --> InitialiseParameters
-
-    PDF --> PDFHandlerChartFactory
+    LABEL --> PRESTIGE["prestige"]
+    PRESTIGE --> P1["ReadLabelsMultiThreaded"]
+    PRESTIGE --> P2["ProductPriceData"]
+    PRESTIGE --> P3["CheckProductProperties"]
+    PRESTIGE --> INIT["prestige.initialise"]
+    INIT --> IN1["InitialiseParameters"]
 ```
 
 ---
@@ -133,7 +116,6 @@ classDiagram
     direction TB
 
     class ReadLabelsMultiThreaded {
-        +Application
         +int debugLevel
         +ExecutorService outerThreadService
         +ExecutorService innerThreadService
@@ -141,9 +123,8 @@ classDiagram
         +getBaseImages(pix, debugL) void
         +getDerivativeImagesAndBoundingBoxes(debugL) void
         +getBoundingBoxes(pix, threadNum, debugL) ArrayList
-        +getOCRBufferedImageWrapperArrayFast(...) ArrayList
+        +getOCRBufferedImageWrapperArrayFast(pix, boxes) ArrayList
         +getFinalProductDescriptions(debugL) ProductDescription
-        +ocrBNandCNImages(debugL) ArrayList
     }
 
     class ProductPriceData {
@@ -198,11 +179,9 @@ classDiagram
         +double likelyActualHeight
         +String ocrString
         +ArrayList boundingBoxes
-        +int type
-        +double minimumAllowedHeight
         +bool heightOK
         +String reasonForRejection
-        +process(basePixH, baseActualH)* void
+        +process(basePixH, baseActualH) void
     }
 
     class OCRPriceDimensionsWrapper {
@@ -224,7 +203,6 @@ classDiagram
         +String datapath$
         +String language$
         +doOCR(image) String
-        +doOCR(image, rect) String
         +isValid() bool
         +destroy() bool
     }
@@ -232,7 +210,6 @@ classDiagram
     class TechWerxTesseractHandle {
         -TechWerxTesseract handle
         -int processInstance
-        +handle(object) Object
         +isValid() bool
         +release() bool
         +destroy() bool
@@ -242,7 +219,6 @@ classDiagram
     class TechWerxTesseractHandlePool {
         +GenericObjectPoolConfig singletonConfig$
         +GenericObjectPoolConfig defaultConfig$
-        +GenericObjectPoolConfig oneMachineConfig$
         +GenericObjectPoolConfig smallPoolConfig$
         +int processInstance
     }
@@ -250,7 +226,6 @@ classDiagram
     class TechWerxTesseractHandleFactory {
         +bool strictChecking$
         +create() TechWerxTesseractHandle
-        +wrap(handle) PooledObject
         +validateObject(po) bool
         +destroyObject(po) void
     }
@@ -281,15 +256,6 @@ classDiagram
         +ArrayList boundingBoxes
     }
 
-    class SBImage {
-        +int[][] pixels
-        +int width
-        +int height
-        +ArrayList subImageCoordinates
-        +BufferedImage underlyingBuffImage
-        +getPixFromBufferedImage(bi) Pix$
-    }
-
     class PixCleaningUtils {
         +removeSaltPepper(pix, debugL, dir) Pix$
         +removeLines(pix, debugL, dir, tryNo) Pix$
@@ -309,17 +275,10 @@ classDiagram
         +writeRollingResult(text) void
         +writeResult(product) void
         +writeError(product) void
-        +moveToErrorFolder(file) void
-    }
-
-    class OtsuThreshold {
-        +getThreshold(pixels) int$
-        +binarise(image) int[][]$
     }
 
     class ProcessDataWrapper {
         +bool linesNeededSplitting
-        +bool linesNotSplitDueToHighOverlap
         +KDEData kdeData
         +reset() void
     }
@@ -341,7 +300,6 @@ classDiagram
     ReadLabelsMultiThreaded --> OCRStringWrapper
     ReadLabelsMultiThreaded --> ProcessDataWrapper
     ReadLabelsMultiThreaded --> Resources
-    ReadLabelsMultiThreaded --> SBImage
     ProductPriceData --> OCRResult
     ProductPriceData --> OCRPriceDimensionsWrapper
     ProductPriceData --> OCRProductDimensionsWrapper
@@ -350,7 +308,6 @@ classDiagram
     ProductPriceData --> CheckProductProperties
     InitialiseParameters --> CheckProductProperties
     InitialiseParameters --> ProductPriceData
-    PixAutoCloseable --> Pix
 ```
 
 ---
@@ -359,36 +316,27 @@ classDiagram
 
 ```mermaid
 graph TD
-    A[java.lang.Object]
-
-    A --> B[OCRDimensionsWrapper\nabstract]
-    B --> C[OCRProductDimensionsWrapper]
-    B --> D[OCRDateDimensionsWrapper]
-    B --> E[OCRPriceDimensionsWrapper]
-
-    A --> F[javafx.application.Application]
-    F --> G[ReadLabelsMultiThreaded]
-
-    H[PoolHandle\ninterface]
-    H --> I[TechWerxTesseractHandle]
-
-    J[GenericObjectPool]
-    J --> K[TechWerxTesseractHandlePool]
-
-    L[BasePooledObjectFactory]
-    L --> M[TechWerxTesseractHandleFactory]
-
-    N[java.io.InputStream]
-    N --> O[FastByteArrayInputStream]
-
-    P[java.io.OutputStream]
-    P --> Q[FastByteArrayOutputStream]
-
-    R[java.util.ArrayList]
-    R --> S[ExclusionList]
-
-    T[java.lang.AutoCloseable]
-    T --> U[PixAutoCloseable]
+    A["java.lang.Object"]
+    A --> B["OCRDimensionsWrapper (abstract)"]
+    B --> C["OCRProductDimensionsWrapper"]
+    B --> D["OCRDateDimensionsWrapper"]
+    B --> E["OCRPriceDimensionsWrapper"]
+    A --> F["javafx.application.Application"]
+    F --> G["ReadLabelsMultiThreaded"]
+    H["PoolHandle (interface)"]
+    H --> I["TechWerxTesseractHandle"]
+    J["GenericObjectPool"]
+    J --> K["TechWerxTesseractHandlePool"]
+    L["BasePooledObjectFactory"]
+    L --> M["TechWerxTesseractHandleFactory"]
+    N["java.io.InputStream"]
+    N --> O["FastByteArrayInputStream"]
+    P["java.io.OutputStream"]
+    P --> Q["FastByteArrayOutputStream"]
+    R["java.util.ArrayList"]
+    R --> S["ExclusionList"]
+    T["java.lang.AutoCloseable"]
+    T --> U["PixAutoCloseable"]
 ```
 
 ---
@@ -397,38 +345,31 @@ graph TD
 
 ```mermaid
 graph LR
-    RLM[ReadLabelsMultiThreaded]
-
-    RLM -->|reads config| IP[InitialiseParameters]
-    RLM -->|reads product.properties| CPP[CheckProductProperties]
-    RLM -->|validates results| PPD[ProductPriceData]
-    RLM -->|borrows/returns handles| TTHP[TechWerxTesseractHandlePool]
-    RLM -->|writes files| RES[Resources]
-    RLM -->|cleans pix| PCU[PixCleaningUtils]
-    RLM -->|debug writes| PDW[PixDebugWriter]
-    RLM -->|wraps intermediates| PAC[PixAutoCloseable]
-
-    TTHP -->|creates via| TTHF[TechWerxTesseractHandleFactory]
-    TTHF -->|creates| TTHL[TechWerxTesseractHandle]
-    TTHL -->|wraps| TTT[TechWerxTesseract]
-    TTT -->|calls| TESS4J[tess4j / Tesseract native]
-
-    PPD -->|reads| CSV[Price Master CSV]
-    PPD -->|uses| FW[FuzzyWuzzy]
-    PPD -->|uses| S4[Sift4 similarity]
-    PPD -->|produces| PD[ProductDescription]
-    PPD -->|uses wrappers| OCRPW[OCRPriceDimensionsWrapper]
-    PPD -->|uses wrappers| OCRDW[OCRDateDimensionsWrapper]
-    PPD -->|uses wrappers| OCRPDW[OCRProductDimensionsWrapper]
-
-    IP -->|loads native| LEPT[liblept / Leptonica native]
-    IP -->|loads native| TESS4J
-
-    PCU -->|calls| LEPT
-    PDW -->|calls| LEPT
-
-    RLM -->|processes pixels| SBI[SBImage]
-    SBI -->|uses| LEPT
+    RLM["ReadLabelsMultiThreaded"]
+    RLM -->|"reads config"| IP["InitialiseParameters"]
+    RLM -->|"reads product.properties"| CPP["CheckProductProperties"]
+    RLM -->|"validates results"| PPD["ProductPriceData"]
+    RLM -->|"borrows and returns handles"| TTHP["TechWerxTesseractHandlePool"]
+    RLM -->|"writes files"| RES["Resources"]
+    RLM -->|"cleans pix"| PCU["PixCleaningUtils"]
+    RLM -->|"debug writes"| PDW["PixDebugWriter"]
+    RLM -->|"wraps intermediates"| PAC["PixAutoCloseable"]
+    TTHP -->|"creates via"| TTHF["TechWerxTesseractHandleFactory"]
+    TTHF -->|"creates"| TTHL["TechWerxTesseractHandle"]
+    TTHL -->|"wraps"| TTT["TechWerxTesseract"]
+    TTT -->|"calls"| TESS4J["tess4j Tesseract native"]
+    PPD -->|"reads"| CSV["Price Master CSV"]
+    PPD -->|"uses"| FW["FuzzyWuzzy"]
+    PPD -->|"uses"| S4["Sift4 similarity"]
+    PPD -->|"produces"| PD["ProductDescription"]
+    PPD -->|"uses"| OCRPW["OCRPriceDimensionsWrapper"]
+    PPD -->|"uses"| OCRDW["OCRDateDimensionsWrapper"]
+    PPD -->|"uses"| OCRPDW["OCRProductDimensionsWrapper"]
+    IP -->|"loads native"| LEPT["liblept Leptonica native"]
+    IP -->|"loads native"| TESS4J
+    PCU -->|"calls"| LEPT
+    RLM -->|"processes pixels"| SBI["SBImage"]
+    SBI -->|"uses"| LEPT
 ```
 
 ---
@@ -437,35 +378,34 @@ graph LR
 
 ```mermaid
 sequenceDiagram
-    participant FS as FileSystem\nWatchService
+    participant FS as FileSystem
     participant RLM as ReadLabelsMultiThreaded
     participant GBI as getBaseImages
-    participant GDIB as getDerivativeImages\nAndBoundingBoxes
-    participant GOCR as getOCRBufferedImage\nWrapperArrayFast
-    participant TPOOL as TesseractHandlePool
+    participant GD as getDerivativeImages
+    participant GO as getOCRWrapperArray
+    participant TP as TesseractPool
     participant PPD as ProductPriceData
     participant RES as Resources
 
     FS->>RLM: new image detected
-    RLM->>RLM: wait until file is readable\n(polling loop)
-    RLM->>RLM: pixRead / load image
-    RLM->>RLM: scale down to ~400×600px
+    RLM->>RLM: poll until file is readable
+    RLM->>RLM: pixRead and scale to 400x600
     RLM->>GBI: getBaseImages(originalPix)
-    GBI-->>RLM: contrastNormalisedImage\nbackgroundNormalisedImage\nunsharpMaskedImage
-    RLM->>GDIB: getDerivativeImagesAndBoundingBoxes()
-    Note over GDIB: try1Thread, try2Thread, try3Thread\nrun in parallel
-    GDIB-->>RLM: try1/2/3 PreBBImages\ntry1/2/3 BBImages\ntry1/2/3 BoundingBoxes
-    RLM->>GOCR: getOCRBufferedImageWrapperArrayFast\n(per try-thread, per line)
-    GOCR->>TPOOL: borrowObject()
-    TPOOL-->>GOCR: TechWerxTesseractHandle
-    GOCR->>GOCR: scale + rotate sub-image\nassemble targetPix8
-    GOCR->>TPOOL: returnObject(handle)
-    GOCR-->>RLM: ArrayList<OCRBufferedImageWrapper>
-    RLM->>RLM: ocrBNandCNImages()\nocrBIWrapperArray()
+    GBI-->>RLM: CN + BN + UM images ready
+    RLM->>GD: getDerivativeImagesAndBoundingBoxes
+    note over GD: try1Thread try2Thread try3Thread run in parallel
+    GD-->>RLM: PreBBImages and BoundingBoxes
+    RLM->>GO: getOCRWrapperArrayFast per try-thread per line
+    GO->>TP: borrowObject
+    TP-->>GO: TechWerxTesseractHandle
+    GO->>GO: scale rotate sub-image assemble targetPix8
+    GO->>TP: returnObject handle
+    GO-->>RLM: ArrayList of OCRBufferedImageWrapper
+    RLM->>RLM: ocrBNandCNImages and ocrBIWrapperArray
     RLM->>PPD: validate(ocrResults)
-    PPD->>PPD: processForMonth\nprocessForYear\nprocessForPrice\nfindProductIndexUsingFuzzyWuzzy
+    PPD->>PPD: processForMonth processForYear processForPrice findProduct
     PPD-->>RLM: ProductDescription
-    RLM->>RES: writeResult / writeError
+    RLM->>RES: writeResult or writeError
     RES-->>FS: results file written
 ```
 
@@ -475,47 +415,46 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[originalPix\nRaw input image] --> B[pixConvertTo8\n8-bpp greyscale]
-    B --> C[pixUnsharpMaskingGray ×3\nSharpen pass 1, 2, 3]
-    C --> D{productIsGiven?}
-    D -->|Yes| E[pixBlockconvGray\n2×1 blur]
-    D -->|No| F[pixCopy]
-    E --> G[pixBackgroundNormFlex\n7×7 tiles, gain=160]
+    A["originalPix raw input"] --> B["pixConvertTo8 8-bpp greyscale"]
+    B --> C["pixUnsharpMaskingGray x3 sharpen passes"]
+    C --> D{"productIsGiven?"}
+    D -->|"Yes"| E["pixBlockconvGray 2x1 blur"]
+    D -->|"No"| F["pixCopy"]
+    E --> G["pixBackgroundNormFlex 7x7 tiles gain=160"]
     F --> G
-    G --> H{productIsGiven?}
-    H -->|Yes| I[pixContrastNorm\n18px × h/5 tiles]
-    H -->|No| J[pixContrastNorm\n24×24 tiles]
-    I --> K[contrastNormalisedImage]
+    G --> H{"productIsGiven?"}
+    H -->|"Yes"| I["pixContrastNorm 18px x h/5 tiles"]
+    H -->|"No"| J["pixContrastNorm 24x24 tiles"]
+    I --> K["contrastNormalisedImage"]
     J --> K
-    K --> L[pixAddBorder 2px white]
-    G --> M[pixCopy → backgroundNormalisedImage]
-    M --> N[pixUnsharpMaskingGray radius=5]
-    N --> O[originalPix8]
-    O --> P{productIsGiven?}
-    P -->|Yes| Q[pixBlockconvGray 1×2]
-    P -->|No| R[pixCopy]
-    Q --> S[pixBackgroundNormFlex\n5×5 tiles, gain=60]
+    G --> M["backgroundNormalisedImage"]
+    M --> N["pixUnsharpMaskingGray radius=5"]
+    N --> O["originalPix8"]
+    O --> P{"productIsGiven?"}
+    P -->|"Yes"| Q["pixBlockconvGray 1x2"]
+    P -->|"No"| R["pixCopy"]
+    Q --> S["pixBackgroundNormFlex 5x5 tiles gain=60"]
     R --> S
-    S --> T[unsharpMaskedImage]
+    S --> T["unsharpMaskedImage"]
 
-    subgraph try1 [Try-Thread 1 — Low Sauvola]
-        T --> U1[pixOpenGray]
-        U1 --> V1[pixErodeGray]
-        V1 --> W1[pixBilateralGray]
-        W1 --> X1[pixSauvolaBinarizeTiled\nfactor=0.005–0.30]
-        X1 --> Y1[PixCleaningUtils\nremoveSaltPepper]
-        Y1 --> Z1[PixCleaningUtils\nremoveLines]
-        Z1 --> AA1[try1PreBBImage]
+    subgraph try1 ["Try-Thread 1 - Low Sauvola factor=0.005"]
+        T --> U1["pixOpenGray"]
+        U1 --> V1["pixErodeGray"]
+        V1 --> W1["pixBilateralGray"]
+        W1 --> X1["pixSauvolaBinarizeTiled"]
+        X1 --> Y1["PixCleaningUtils removeSaltPepper"]
+        Y1 --> Z1["PixCleaningUtils removeLines"]
+        Z1 --> AA1["try1PreBBImage"]
     end
 
-    subgraph try3 [Try-Thread 3 — High Sauvola]
-        T --> U3[pixOpenGray]
-        U3 --> V3[pixErodeGray]
-        V3 --> W3[pixBilateralGray]
-        W3 --> X3[pixSauvolaBinarizeTiled\nfactor=0.30]
-        X3 --> Y3[PixCleaningUtils\nremoveSaltPepper]
-        Y3 --> Z3[PixCleaningUtils\nremoveLines]
-        Z3 --> AA3[try3PreBBImage]
+    subgraph try3 ["Try-Thread 3 - High Sauvola factor=0.30"]
+        T --> U3["pixOpenGray"]
+        U3 --> V3["pixErodeGray"]
+        V3 --> W3["pixBilateralGray"]
+        W3 --> X3["pixSauvolaBinarizeTiled"]
+        X3 --> Y3["PixCleaningUtils removeSaltPepper"]
+        Y3 --> Z3["PixCleaningUtils removeLines"]
+        Z3 --> AA3["try3PreBBImage"]
     end
 ```
 
@@ -525,18 +464,17 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    IN[tryNPreBBImage\n1-bpp cleaned Pix]
-
-    IN --> R1[Round 1\ngetDefaultBoxes\nsegregateBoxesIntoLines\nremoveSmallBoxes]
-    R1 --> R2[Round 2\nreallocateLines\nhorizontal alignment pass 1]
-    R2 --> R3[Round 3\nreallocateLines\nhorizontal alignment pass 2]
-    R3 --> R4[Round 4\nremoveLargeBoxes\nAndRedistribute]
-    R4 --> R5[Round 5\nreallocateLines\nhorizontal alignment pass 3]
-    R5 --> R6[Round 6\nreallocateLinesAgain\nfine-grained reallocation]
-    R6 --> R7[Round 7\nsplitLinesByYCoordinate\nY-axis splitting]
-    R7 --> R8[Round 8\nreallocateVerticalBoxes\nvertical box merging]
-    R8 --> R9[Round 9\nremoveEdgeKissing\nBoundingBoxes\nclip border artifacts]
-    R9 --> OUT[ArrayList of ArrayList of Rectangle\nfinal bounding boxes per line]
+    IN["tryNPreBBImage 1-bpp cleaned Pix"]
+    IN --> R1["Round 1\ngetDefaultBoxes\nsegregateBoxesIntoLines\nremoveSmallBoxes"]
+    R1 --> R2["Round 2\nreallocateLines\nhorizontal alignment pass 1"]
+    R2 --> R3["Round 3\nreallocateLines\nhorizontal alignment pass 2"]
+    R3 --> R4["Round 4\nremoveLargeBoxesAndRedistribute"]
+    R4 --> R5["Round 5\nreallocateLines\nhorizontal alignment pass 3"]
+    R5 --> R6["Round 6\nreallocateLinesAgain\nfine-grained reallocation"]
+    R6 --> R7["Round 7\nsplitLinesByYCoordinate"]
+    R7 --> R8["Round 8\nreallocateVerticalBoxes"]
+    R8 --> R9["Round 9\nremoveEdgeKissingBoundingBoxes"]
+    R9 --> OUT["final bounding boxes per line"]
 
     style R1 fill:#d4e6f1
     style R2 fill:#d4e6f1
@@ -556,38 +494,38 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant RLM as ReadLabelsMultiThreaded
-    participant POOL as TechWerxTesseractHandlePool
-    participant FACT as TechWerxTesseractHandleFactory
-    participant HDL as TechWerxTesseractHandle
+    participant POOL as TesseractHandlePool
+    participant FACT as TesseractHandleFactory
+    participant HDL as TesseractHandle
     participant TESS as TechWerxTesseract
 
-    Note over RLM: At startup
-    RLM->>FACT: new TechWerxTesseractHandleFactory\n(processInstance, debugLevel)
-    RLM->>POOL: new TechWerxTesseractHandlePool\n(factory, smallPoolConfig)
-    POOL->>POOL: preparePool()\npre-creates minIdle handles
-    POOL->>FACT: create() × minIdle
-    FACT->>HDL: new TechWerxTesseractHandle()
-    HDL->>TESS: new TechWerxTesseract()
+    note over RLM: At startup
+    RLM->>FACT: new TesseractHandleFactory(processInstance, debugLevel)
+    RLM->>POOL: new TesseractHandlePool(factory, smallPoolConfig)
+    POOL->>POOL: preparePool pre-creates minIdle handles
+    POOL->>FACT: create x minIdle
+    FACT->>HDL: new TechWerxTesseractHandle
+    HDL->>TESS: new TechWerxTesseract
 
-    Note over RLM: Per OCR call
-    RLM->>POOL: borrowObject()
+    note over RLM: Per OCR call
+    RLM->>POOL: borrowObject
     POOL-->>RLM: TechWerxTesseractHandle
     RLM->>HDL: getHandle().doOCR(image)
     HDL->>TESS: doOCR(image)
     TESS-->>HDL: OCR text string
     HDL-->>RLM: OCR text string
     RLM->>POOL: returnObject(handle)
-    POOL->>FACT: passivateObject(handle)\n[no-op — Tesseract self-resets]
+    POOL->>FACT: passivateObject - no-op Tesseract self-resets
     POOL->>FACT: validateObject(handle)
-    FACT->>HDL: isValid()
-    HDL->>TESS: isValid()
-    TESS-->>FACT: true/false
+    FACT->>HDL: isValid
+    HDL->>TESS: isValid
+    TESS-->>FACT: true or false
 
-    Note over RLM: At shutdown
-    RLM->>POOL: close()
-    POOL->>FACT: destroyObject(handle) × all
-    FACT->>HDL: destroy()
-    HDL->>TESS: destroy()
+    note over RLM: At shutdown
+    RLM->>POOL: close
+    POOL->>FACT: destroyObject x all handles
+    FACT->>HDL: destroy
+    HDL->>TESS: destroy
 ```
 
 ---
@@ -596,37 +534,38 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[ArrayList of OCRResult\nraw OCR sentences] --> B[processForMonth\nFuzzyWuzzy match\nagainst months list]
-    A --> C[processForYear\nregex \\d4 match\nagainst years list]
-    A --> D[processForPrice\nregex \\d3+ match\nagainst prices list]
+    A["ArrayList of OCRResult raw OCR sentences"]
+    A --> B["processForMonth\nFuzzyWuzzy match against months list"]
+    A --> C["processForYear\nregex 4-digit match against years list"]
+    A --> D["processForPrice\nregex 3+ digit match against prices list"]
 
-    B --> E{bestMonthMatch\nfound?}
-    C --> F{year found?}
-    D --> G{price index\nfound?}
+    B --> E{"bestMonthMatch found?"}
+    C --> F{"year found?"}
+    D --> G{"price index found?"}
 
-    E -->|Yes| H[monthFound = true]
-    E -->|No| I[monthFound = false]
-    F -->|Yes| J[yearFound = true]
-    F -->|No| K[yearFound = false]
-    G -->|Yes| L[priceIndices populated]
-    G -->|No| M[priceIndices empty]
+    E -->|"Yes"| H["monthFound = true"]
+    E -->|"No"| I["monthFound = false"]
+    F -->|"Yes"| J["yearFound = true"]
+    F -->|"No"| K["yearFound = false"]
+    G -->|"Yes"| L["priceIndices populated"]
+    G -->|"No"| M["priceIndices empty"]
 
-    L --> N{productIsGiven?}
-    N -->|Yes| O[Match price against\ngivenProductPrice\nOCRPriceDimensionsWrapper\ndistance check]
-    N -->|No| P[findProductIndexUsing\nFuzzyWuzzy\nSift4 distance\ncapacity variant matching]
+    L --> N{"productIsGiven?"}
+    N -->|"Yes"| O["Match price against givenProductPrice\nOCRPriceDimensionsWrapper distance check"]
+    N -->|"No"| P["findProductIndex FuzzyWuzzy\nSift4 distance capacity variant matching"]
 
-    O --> Q{priceFound\n&& monthFound\n&& yearFound\n&& priceHasADot?}
-    P --> R{productFound\n&& monthFound\n&& yearFound\n&& priceHasADot?}
+    O --> Q{"price AND month AND year AND priceHasADot?"}
+    P --> R{"product AND month AND year AND priceHasADot?"}
 
-    Q -->|Yes| S[ALL_OK]
-    Q -->|No| T[ERROR_ONLY_ONE\nTHING_NOT_FOUND]
-    R -->|Yes| S
-    R -->|No| T
+    Q -->|"Yes"| S["ALL_OK"]
+    Q -->|"No"| T["ERROR_ONLY_ONE_THING_NOT_FOUND"]
+    R -->|"Yes"| S
+    R -->|"No"| T
 
-    S --> U{dimension\nchecks pass?}
-    T --> V[ProductDescription\nwith rejectionReason]
-    U -->|Yes| W[ProductDescription\nproductOK = ALL_OK]
-    U -->|No| X[ProductDescription\nproductOK = ERROR_DIMENSION\n_PROBLEM]
+    S --> U{"dimension checks pass?"}
+    T --> V["ProductDescription with rejectionReason"]
+    U -->|"Yes"| W["ProductDescription productOK = ALL_OK"]
+    U -->|"No"| X["ProductDescription productOK = ERROR_DIMENSION_PROBLEM"]
 ```
 
 ---
@@ -635,63 +574,52 @@ flowchart TD
 
 ```mermaid
 graph TD
-    MAIN[Main Thread\nJavaFX Application Thread]
-
-    MAIN --> WATCH[WatchService Loop\nprocessAllFilesInDirectory]
-
-    WATCH --> OUTER[outerThreadService\nFixedThreadPool-30]
-
-    OUTER --> T1[try1Thread\nCompletableFuture\nSauvola binarise]
-    OUTER --> T2[try2Thread\nCompletableFuture\nBackground-norm binarise]
-    OUTER --> T3[try3Thread\nCompletableFuture\nSauvola alt binarise]
-
-    T1 --> GBB1[getBoundingBoxes\nThread-1]
-    T2 --> GBB2[getBoundingBoxes\nThread-2]
-    T3 --> GBB3[getBoundingBoxes\nThread-3]
-
-    GBB1 --> INNER[innerThreadService\nFixedThreadPool-60]
+    MAIN["Main Thread - JavaFX Application Thread"]
+    MAIN --> WATCH["WatchService Loop\nprocessAllFilesInDirectory"]
+    WATCH --> OUTER["outerThreadService\nFixedThreadPool 30"]
+    OUTER --> T1["try1Thread\nCompletableFuture\nSauvola binarise"]
+    OUTER --> T2["try2Thread\nCompletableFuture\nBackground-norm binarise"]
+    OUTER --> T3["try3Thread\nCompletableFuture\nSauvola alt binarise"]
+    T1 --> GBB1["getBoundingBoxes Thread-1"]
+    T2 --> GBB2["getBoundingBoxes Thread-2"]
+    T3 --> GBB3["getBoundingBoxes Thread-3"]
+    GBB1 --> INNER["innerThreadService\nFixedThreadPool 60"]
     GBB2 --> INNER
     GBB3 --> INNER
-
-    INNER --> OCR1[OCR sub-image line 1]
-    INNER --> OCR2[OCR sub-image line 2]
-    INNER --> OCRN[OCR sub-image line N]
-
-    OCR1 --> TPOOL[TechWerxTesseractHandlePool\nsmallPoolConfig max=15]
+    INNER --> OCR1["OCR sub-image line 1"]
+    INNER --> OCR2["OCR sub-image line 2"]
+    INNER --> OCRN["OCR sub-image line N"]
+    OCR1 --> TPOOL["TechWerxTesseractHandlePool\nsmallPoolConfig max=15"]
     OCR2 --> TPOOL
     OCRN --> TPOOL
-
-    TPOOL --> INST1[TechWerxTesseract\nInstance 1]
-    TPOOL --> INST2[TechWerxTesseract\nInstance 2]
-    TPOOL --> INSTN[TechWerxTesseract\nInstance N]
-
-    PARALLEL[parallelThreadPool\nFixedThreadPool-10] --> BN[ocrBNandCNImages\nbackgroundNorm OCR]
-    PARALLEL --> CN[originalImages OCR]
-    BN --> ORIG_POOL[originalImagesTesseract\nPool useAutoOSD=true]
+    TPOOL --> INST1["TechWerxTesseract Instance 1"]
+    TPOOL --> INST2["TechWerxTesseract Instance 2"]
+    TPOOL --> INSTN["TechWerxTesseract Instance N"]
+    PARALLEL["parallelThreadPool\nFixedThreadPool 10"]
+    PARALLEL --> BN["ocrBNandCNImages\nbackgroundNorm OCR"]
+    PARALLEL --> CN["originalImages OCR"]
+    BN --> ORIG_POOL["originalImagesTesseractPool\nuseAutoOSD=true"]
     CN --> ORIG_POOL
 ```
 
 ---
 
-## State Machine — Per-Image Processing
+## Per-Image State Machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> WaitingForFile : WatchService detects new file
-
-    WaitingForFile --> LoadingImage : file lock released\n(isFileReadyForReading)
-    LoadingImage --> BaseImagePrep : pixRead / ImageIO.read\nscale to target size
-    BaseImagePrep --> DerivativePrep : getBaseImages complete\nCN + BN + UM images ready
-    DerivativePrep --> BBExtraction : try1/2/3 threads complete\nPreBBImages ready
-    BBExtraction --> OCRPrep : 9-round BB pipeline complete\nper-line bounding boxes ready
-    OCRPrep --> TesseractOCR : sub-images assembled\ntargetPix8 ready per line
-    TesseractOCR --> Validation : OCRResult collected\nfrom all try-threads
+    WaitingForFile --> LoadingImage : file lock released
+    WaitingForFile --> WaitingForFile : file not ready yet polling 5ms
+    LoadingImage --> BaseImagePrep : pixRead and scale to target size
+    BaseImagePrep --> DerivativePrep : CN BN UM images ready
+    DerivativePrep --> BBExtraction : try1 try2 try3 threads complete
+    BBExtraction --> OCRPrep : 9-round BB pipeline complete
+    OCRPrep --> TesseractOCR : sub-images assembled
+    TesseractOCR --> Validation : OCRResult collected from all threads
     Validation --> Writing : ProductDescription produced
-    Writing --> [*] : results file written\nmove to output / error folder
-
-    WaitingForFile --> WaitingForFile : file not ready yet\n(polling 5ms)
-    DerivativePrep --> DerivativePrep : interrupt check\nbetween each Leptonica call
-    TesseractOCR --> Writing : interrupted\nreturn partial result
+    Writing --> [*] : results file written
+    TesseractOCR --> Writing : interrupted return partial result
 ```
 
 ---
@@ -702,28 +630,28 @@ stateDiagram-v2
 sequenceDiagram
     participant UI as JavaFX UI
     participant RLM as ReadLabelsMultiThreaded
-    participant FS as FileSystem\nWatchService
-    participant PAD as processAllFiles\nInDirectory
+    participant FS as WatchService
+    participant PAD as processAllFilesInDirectory
     participant PF as processAFile
 
     UI->>RLM: Start button clicked
-    RLM->>FS: register input folder\nSTANDARD_MODIFY + CREATE
+    RLM->>FS: register input folder STANDARD_MODIFY and CREATE
     loop Watch cycle
         FS-->>RLM: WatchKey signalled
-        RLM->>PAD: processAllFilesInDirectory\n(resources, textFlow, processingData)
+        RLM->>PAD: processAllFilesInDirectory(resources, textFlow, processingData)
         PAD->>PF: processAFile(resources, textFlow)
         PF->>RLM: processFileMultiThreadedFast(path)
         RLM-->>PF: ProductDescription
-        PF->>UI: Platform.runLater\nupdate TextFlow
-        PF->>PAD: ProcessingData (files, time, ok)
+        PF->>UI: Platform.runLater update TextFlow
+        PF->>PAD: ProcessingData files time ok
         PAD-->>RLM: aggregate ProcessingData
-        alt autoReport = true
+        alt autoReport is true
             RLM->>UI: render report line
         end
-        RLM->>FS: key.reset()
+        RLM->>FS: key.reset
     end
     UI->>RLM: Stop button clicked
-    RLM->>RLM: loop = false\nshutdown thread pools
+    RLM->>RLM: loop false shutdown thread pools
 ```
 
 ---
@@ -732,35 +660,35 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant MAIN as main()
+    participant MAIN as main
     participant IP as InitialiseParameters
     participant SYS as System Properties
-    participant JNA as JNA / Native Libs
+    participant NAT as Native Libraries
     participant PPD as ProductPriceData
     participant CPP as CheckProductProperties
 
     MAIN->>IP: initialise(configFile, fallback)
-    IP->>IP: loadPropertiesFromFile\n(config.properties)
-    IP->>SYS: setProperty for each entry\n(input.folder, output.folder,\ntesseract.datapath, etc.)
-    IP->>IP: applySystemProperties\n→ setupLibraryPaths
-    IP->>SYS: java.library.path prepend\nexternallib.folder
-    IP->>IP: reflection hack\nsys_paths override
-    IP->>JNA: System.load(liblept.so)
-    IP->>JNA: System.load(libtesseract.so)
+    IP->>IP: loadPropertiesFromFile config.properties
+    IP->>SYS: setProperty for each entry
+    IP->>IP: applySystemProperties then setupLibraryPaths
+    IP->>SYS: java.library.path prepend externallib.folder
+    IP->>IP: reflection hack sys_paths override
+    IP->>NAT: System.load liblept.so
+    IP->>NAT: System.load libtesseract.so
     IP-->>MAIN: true
 
-    MAIN->>IP: getProductSetting\n(product.properties, fallback)
-    IP->>IP: loadPropertiesFromFile\n(product.properties)
-    IP->>SYS: productname.fixed\nproduct.name
-    IP->>CPP: reset()
-    IP->>PPD: loadMonths()
-    IP->>PPD: loadYears()
+    MAIN->>IP: getProductSetting(product.properties, fallback)
+    IP->>IP: loadPropertiesFromFile product.properties
+    IP->>SYS: productname.fixed and product.name
+    IP->>CPP: reset
+    IP->>PPD: loadMonths
+    IP->>PPD: loadYears
     IP-->>MAIN: true
 
-    MAIN->>PPD: initialise()
-    PPD->>PPD: loadProductsAndPrices()\nread Price Master CSV
-    PPD->>PPD: build products / prices\ncapacityVariants / uniqueProductStrings
-    PPD->>CPP: checkIfProductIsGiven()
+    MAIN->>PPD: initialise
+    PPD->>PPD: loadProductsAndPrices read Price Master CSV
+    PPD->>PPD: build products prices capacityVariants uniqueProductStrings
+    PPD->>CPP: checkIfProductIsGiven
     CPP-->>PPD: productIsGiven flag set
     PPD-->>MAIN: singleton pkInstance ready
 ```
@@ -771,20 +699,19 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    APP[readPrestigeLabels\nmodule]
-
-    APP -->|OCR engine| TESS4J[tess4j\nJava wrapper for Tesseract]
-    APP -->|image processing| LEPT4J[lept4j\nJava wrapper for Leptonica]
-    APP -->|native loading| JNA[com.sun.jna\nJava Native Access]
-    APP -->|statistics| MATH3[commons.math3\nDescriptiveStatistics]
-    APP -->|object pooling| POOL2[commons.pool2\nGenericObjectPool]
-    APP -->|file utilities| COMMONS_IO[commons.io\nApache Commons IO]
-    APP -->|fuzzy matching| FUZZY[fuzzywuzzy\nstring similarity]
-    APP -->|edit distance| SIFT4[java.string.similarity\nSift4]
-    APP -->|charting / PDF| JFREE[jfreechart\nPDF output charts]
-    APP -->|TIFF image I/O| JAI[jai.imageio.core\nTIFF read/write]
-    APP -->|virtual filesystem| JBOSS[jboss.vfs\nresource loading]
-    APP -->|logging| SLF4J[org.slf4j\nlogging facade]
-    APP -->|UI| JAVAFX[javafx.controls\njavafx.graphics]
-    APP -->|AWT/Swing| DESKTOP[java.desktop\nBufferedImage etc.]
+    APP["readPrestigeLabels module"]
+    APP -->|"OCR engine"| A["tess4j - Java wrapper for Tesseract"]
+    APP -->|"image processing"| B["lept4j - Java wrapper for Leptonica"]
+    APP -->|"native loading"| C["com.sun.jna - Java Native Access"]
+    APP -->|"statistics"| D["commons.math3 - DescriptiveStatistics"]
+    APP -->|"object pooling"| E["commons.pool2 - GenericObjectPool"]
+    APP -->|"file utilities"| F["commons.io - Apache Commons IO"]
+    APP -->|"fuzzy matching"| G["fuzzywuzzy - string similarity"]
+    APP -->|"edit distance"| H["java.string.similarity - Sift4"]
+    APP -->|"charting"| I["jfreechart - PDF output charts"]
+    APP -->|"TIFF image I/O"| J["jai.imageio.core - TIFF read and write"]
+    APP -->|"resource loading"| K["jboss.vfs"]
+    APP -->|"logging"| L["org.slf4j - logging facade"]
+    APP -->|"UI"| M["javafx.controls and javafx.graphics"]
+    APP -->|"AWT"| N["java.desktop - BufferedImage"]
 ```
