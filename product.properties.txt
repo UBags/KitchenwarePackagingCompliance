@@ -1,0 +1,78 @@
+# Valid values for printtype.quality are 1) continuous or 2) broken
+# The value here has to be exactly equal to the product name in column 2 of the Price Master Summary
+# If productname.fixed is set to false, then this value is ignored
+# printtype.quality=broken
+
+# A valid value for product.name is the exact full product name as in the database
+# Required only if productname.fixed=false
+# If the productname.fixed is true, then the product box being scanned has to be provided, so that the price on the box can be compared to a known price
+# The value here has to be exactly equal to the product name in column 2 of the Price Master Summary
+# If productname.fixed is set to false, then this value is ignored
+# 2390
+#product.name=PRESTIGE DELUXE PLUS PRESSURE HANDI 3.3L (ALUMINIUM HARD ANODISED)
+# 3410
+#product.name=PRESTIGE DELUXE ALPHA STAINLESS STEEL PRESSURE COOKER 6.5L
+# 1120
+#product.name=PRESTIGE PLATINA STAINLESS STEEL SAUCE PAN 180MM WITH LID (2L)
+# 1220
+#product.name=SOME PRODUCT 1
+# 1450
+#product.name=PRESTIGE POPULAR PLUS PRESSURE COOKER 3.0L
+# 1900
+#product.name=PRESTIGE DELUXE PLUS PRESSURE HANDI 3.3L (ALUMINIUM POWDER COATED)
+# 2525
+#product.name=PRESTIGE DELUXE PLUS ALUMINIUM SENIOR DEEP PRESSURE PAN 6L (POLISHED)
+# 2310
+#product.name=SOME PRODUCT
+# 2750
+#product.name=SOME PRODUCT 3
+# 2200
+#product.name=PRESTIGE DELUXE DUO PLUS HARD ANODISED PRESSURE HANDI WITH STAINLESS STEEL LID 2L 01U AND GLASS LID 01U
+# 2460
+#product.name=PRESTIGE NAKSHATRA CUTE DUO SILKY RED PRESSURE COOKER 5L (POWDER COATED)
+# 2180
+#product.name=PRESTIGE DELUXE ALPHA SVACHH STAINLESS STEEL PRESSURE COOKER 2L
+# 2420
+#product.name=PRESTIGE DELUXE ALPHA SVACHH STAINLESS STEEL PRESSURE COOKER 3L
+# 2625
+#product.name=PRESTIGE DELUXE PLUS PRESSURE COOKER 7L
+# 1850
+#product.name=PRESTIGE POPULAR PRESSURE COOKER 5.0L ALUMINIUM
+# 2000
+#product.name=PRESTIGE POPULAR PRESSURE COOKER 5.5L ALUMINIUM
+# 2760
+#product.name=PRESTIGE DELUXE ALPHA SVACHH STAINLESS PRESSURE COOKER 3L
+# 2790
+#product.name=PRESTIGE DELUXE ALPHA SVACHH STAINLESS PRESSURE COOKER 4L
+# 3495
+#product.name=PRESTIGE IRIS STAINLESS STEEL COOKWARE BUILD DIA WITH GLASS LID-1U FRY PAN 220MM DIA
+# 1925
+#product.name=PRESTIGE POPULAR PLUS PRESSURE COOKER 5.0L
+# 1145
+#product.name=PRESTIGE POPULAR PRESSURE COOKER 2L
+# 3500
+#product.name=PRESTIGE SVACHH 7.5 SAVACHH HA
+# 3100
+product.name=PRESTIGE SVACHH SR PAN HA
+# 3110
+#product.name=PRESTIGE DELUXE ALPHA SVACHH STAINLESS STEEL PRESSURE COOKER 5.5L
+
+# Valid values for productname.fixed are 1) true or 2) false
+# If product name is not part of the image, set the value to true (see also product.name comments). Else, set it to false
+# If the value is set to true, then the s	ystem will not check for a product match with price. Also, :
+#      - there will be NO check for height of price and date, because no baseline is available for converting pixels to distance
+#      - The check for comparison of distance between thousands and hundreds digit will still be there
+productname.fixed=true
+
+# Which months are allowed. Values can be only 'current' or 'all'. Current allows both current and previous month.
+# The code logic works for December as well, where the year allowed includes the previous year as well
+months.allowed=current
+
+# IMPORTANT NOTES: 
+# 1. DO NOT DELETE ANY ROW
+# 2. DO NOT ADD ANY ROW
+# 3. ONLY CHANGE THE VALUES AFTER THE = (EQUALS) SIGN
+# 4. READ THE NOTE ABOVE EVERY KEY-VALUE PAIR. WHERE THERE IS A CONSTRAINT ON WHAT VALUES THE KEY CAN TAKE, ENSURE THAT ONLY THOSE VALUES ARE PUT.
+# 5. AFTER A VALUE IS PUT, UNLESS OTHERWISE SPECIFIED, ENSURE THAT THERE IS NO SPACE AFTER THE VALUE
+# 6. IF THERE IS ANY DEVIATION FROM THE ABOVE RULES, THE RESULTS WILL BE FLAKY
+

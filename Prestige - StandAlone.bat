@@ -1,0 +1,3 @@
+ECHO off
+java -DtesseractLib=libtesseract411 -DleptLib=liblept1790 -jar Prestige.jar initFile=config.properties prodFile=product.properties -Xms1024M -Xmx1536M -classpath %CLASSPATH%;Prestige_lib/* --module-path "E:/TechWerx/Distribution Packaging/javafx-sdk-13.0.1/lib" --add-modules=javafx.controls,javafx.media,javafx.fxml
+REM E:/TechWerx/"Zulu 11"/bin/java -DtesseractLib=libtesseract411 -DleptLib=liblept1790 -jar Prestige.jar initFile=config.properties prodFile=product.properties -classpath %CLASSPATH%;Prestige_lib/*;E:/TechWerx/"Zulu 11"/lib -Xms1024M -Xmx2048M
